@@ -25,7 +25,6 @@ function _run_mkarch ()
 
 	local PRINT_SIZE
 	local PRINT_TIME
-	local COMPRESS_COMMAND
 	local NAME
 	local EXTENSION
 	local ARCHIVE_NAME
@@ -69,7 +68,7 @@ function _run_mkarch ()
 
 	local mkarch-mk_tar_bz2 ()
 	{
-		COMPRESS_COMMAND='bzip2'
+		local COMPRESS_COMMAND='bzip2'
 		if command -v lbzip2 > /dev/null; then
 			COMPRESS_COMMAND='lbzip2'
 		fi
@@ -79,7 +78,7 @@ function _run_mkarch ()
 
 	local mkarch-mk_tar_gz ()
 	{
-		COMPRESS_COMMAND='gzip'
+		local COMPRESS_COMMAND='gzip'
 		if command -v pigz > /dev/null; then
 			COMPRESS_COMMAND='pigz'
 		fi
@@ -89,7 +88,7 @@ function _run_mkarch ()
 
 	local mkarch-mk_tar_xz ()
 	{
-		COMPRESS_COMMAND='xz -T0'
+		local COMPRESS_COMMAND='xz -T0'
 		if command -v pixz > /dev/null; then
 			COMPRESS_COMMAND='pixz'
 		fi
@@ -99,14 +98,14 @@ function _run_mkarch ()
 
 	local mkarch-mk_tar_zst ()
 	{
-		COMPRESS_COMMAND='zstd -T0'
+		local COMPRESS_COMMAND='zstd -T0'
 
 		mkarch-mk_tar_archive
 	}
 
 	local mkarch-mk_tar_lz4 ()
 	{
-		COMPRESS_COMMAND='lz4'
+		local COMPRESS_COMMAND='lz4'
 
 		mkarch-mk_tar_archive
 	}
@@ -126,7 +125,7 @@ function _run_mkarch ()
 
 	local mkarch-mk_tar_lzo ()
 	{
-		COMPRESS_COMMAND='lzop'
+		local COMPRESS_COMMAND='lzop'
 
 		mkarch-mk_tar_archive
 	}
