@@ -20,7 +20,9 @@ function _run_mkarch ()
 		pipe_fail
 	########################################################
 
+
 	###################### VARIABLES #######################
+	local -A archs=()
 	local -U files=()
 
 	local PRINT_SIZE
@@ -29,6 +31,7 @@ function _run_mkarch ()
 	local EXTENSION
 	local ARCHIVE_NAME
 	########################################################
+
 
 	###################### FUNCTIONS  #######################
 	# (explicit cleanup in function mkarch)
@@ -56,7 +59,6 @@ function _run_mkarch ()
 		fi
 	}
 
-	# (explicit cleanup in function mkarch)
 	local mkarch-mk_tar_archive ()
 	{
 		if [[ -n $PRINT_SIZE ]]; then
@@ -163,6 +165,43 @@ function _run_mkarch ()
 		fi
 	}
 	########################################################
+
+
+	####################### Generate map of available compression formats
+	if command -v tar > /dev/null; then
+		archs[tar]="mkarch-mk_tar_plain_archive"
+		if command -v bzip2 lbzip2 > /dev/null; then
+			archs[tar.bz2]="mkarch-mk_tar_bz2"
+		fi
+		if command -v gzip pigz > /dev/null; then
+			archs[tar.gz]="mkarch-mk_tar_gz"
+		fi
+		if command -v xz pixz > /dev/null; then
+			archs[tar.xz]="mkarch-mk_tar_xz"
+		fi
+		if command -v zstd > /dev/null; then
+			archs[tar.zst]="mkarch-mk_tar_zst"
+		fi
+		if command -v lz4 > /dev/null; then
+			archs[tar.lz4]="mkarch-mk_tar_lz4"
+		fi
+		if command -v lrzip > /dev/null; then
+			archs[tar.lrz]="mkarch-mk_tar_lrz"
+		fi
+		if command -v lzop > /dev/null; then
+			archs[tar.lzo]="mkarch-mk_tar_lzo"
+		fi
+	fi
+	if command -v 7z > /dev/null; then
+		archs[7z]="mkarch-mk_7z"
+	fi
+	if command -v rar > /dev/null; then
+		archs[rar]="mkarch-mk_rar"
+	fi
+	if command -v zip > /dev/null; then
+		archs[zip]="mkarch-mk_zip"
+	fi
+	#######################
 
 	####################### Generate usage info
 	local usage="Archive files and directories using a given compression format.
@@ -310,53 +349,23 @@ Usage: mkarch <options> [format] [files...]
 
 function mkarch ()
 {
-	####################### Generate map of available compression formats
-	local -A archs=()
-	if command -v tar > /dev/null; then
-		archs[tar]="mkarch-mk_tar_plain_archive"
-		if command -v bzip2 lbzip2 > /dev/null; then
-			archs[tar.bz2]="mkarch-mk_tar_bz2"
-		fi
-		if command -v gzip pigz > /dev/null; then
-			archs[tar.gz]="mkarch-mk_tar_gz"
-		fi
-		if command -v xz pixz > /dev/null; then
-			archs[tar.xz]="mkarch-mk_tar_xz"
-		fi
-		if command -v zstd > /dev/null; then
-			archs[tar.zst]="mkarch-mk_tar_zst"
-		fi
-		if command -v lz4 > /dev/null; then
-			archs[tar.lz4]="mkarch-mk_tar_lz4"
-		fi
-		if command -v lrzip > /dev/null; then
-			archs[tar.lrz]="mkarch-mk_tar_lrz"
-		fi
-		if command -v lzop > /dev/null; then
-			archs[tar.lzo]="mkarch-mk_tar_lzo"
-		fi
-	fi
-	if command -v 7z > /dev/null; then
-		archs[7z]="mkarch-mk_7z"
-	fi
-	if command -v rar > /dev/null; then
-		archs[rar]="mkarch-mk_rar"
-	fi
-	if command -v zip > /dev/null; then
-		archs[zip]="mkarch-mk_zip"
-	fi
-	#######################
-
 	local ret
 	_run_mkarch $@ || ret=$?
 
 	# cleanup _run_mkarch local functions
 	unfunction "mkarch-gen_archive_name"
+	unfunction "mkarch-mk_tar_plain_archive"
 	unfunction "mkarch-mk_tar_archive"
-	local archs_func
-	for archs_func in ${(v)archs}; do
-		unfunction "${archs_func}"
-	done
+	unfunction "mkarch-mk_tar_bz2"
+	unfunction "mkarch-mk_tar_gz"
+	unfunction "mkarch-mk_tar_xz"
+	unfunction "mkarch-mk_tar_zst"
+	unfunction "mkarch-mk_tar_lz4"
+	unfunction "mkarch-mk_tar_lrz"
+	unfunction "mkarch-mk_tar_lzo"
+	unfunction "mkarch-mk_7z"
+	unfunction "mkarch-mk_rar"
+	unfunction "mkarch-mk_zip"
 
 	return $ret
 }
