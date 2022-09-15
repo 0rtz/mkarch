@@ -51,6 +51,15 @@ function _run_mkarch ()
 		fi
 	}
 
+	local mkarch-mk_tar_plain_archive ()
+	{
+		if [[ -n $PRINT_SIZE ]]; then
+			tar -cv --to-stdout "${files[@]}" 2>/dev/null | wc -c | numfmt --round=nearest --to=si --suffix=B --format="$EXTENSION archive size: %.2f" || { print -u2 "ERROR: $EXTENSION"; return 1 }
+		else
+			tar -cv -f "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output $EXTENSION archive to $ARCHIVE_NAME" || { print -u2 "ERROR: $EXTENSION"; return 1 }
+		fi
+	}
+
 	local mkarch-mk_tar_archive ()
 	{
 		if [[ -n $PRINT_SIZE ]]; then
@@ -155,6 +164,7 @@ function _run_mkarch ()
 
 	####################### Generate map of available compression formats
 	if command -v tar > /dev/null; then
+		archs[tar]="mkarch-mk_tar_plain_archive"
 		if command -v bzip2 lbzip2 > /dev/null; then
 			archs[tar.bz2]="mkarch-mk_tar_bz2"
 		fi
@@ -353,6 +363,7 @@ function mkarch ()
 
 	# cleanup _run_mkarch local functions
 	unfunction "mkarch-gen_archive_name"
+	unfunction "mkarch-mk_tar_plain_archive"
 	unfunction "mkarch-mk_tar_archive"
 	unfunction "mkarch-mk_tar_bz2"
 	unfunction "mkarch-mk_tar_gz"
