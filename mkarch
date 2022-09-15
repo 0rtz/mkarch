@@ -189,20 +189,6 @@ Usage: mkarch <options> [format] [files...]
 	else
 		usage="${usage} ALL )"
 	fi
-	usage="${usage}
-
-
-Example 1.
-Archive 'build' directory and 'README.md' file using tar.gz compression:
-	mkarch tar.gz build README.md
-
-Example 2.
-Only print size of archive:
-	mkarch -s tar.gz build README.md
-
-Example 3.
-Print size and time of archiving 'prj' for each available compression format
-	mkarch -s -t ALL prj"
 	#######################
 
 	####################### Parse mkarch arguments
