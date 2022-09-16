@@ -5,7 +5,7 @@ _mkarch ()
 	local -U archs
 	if command -v tar > /dev/null; then
 		archs+=("tar")
-		if command -v bzip2 lbzip2 > /dev/null; then
+		if command -v bzip2 pbzip2 lbzip2 > /dev/null; then
 			archs+=("tar.bz2")
 		fi
 		if command -v gzip pigz > /dev/null; then
