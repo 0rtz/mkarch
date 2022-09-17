@@ -41,6 +41,7 @@ _mkarch ()
 	_arguments -A "-*" \
 	  "(-s --size)"{-s,--size}"[Print size without outputting archive]" \
 	  "(-t --time)"{-t,--time}"[Print archiving time]" \
+	  "(-b --best)"{-b,--best}"[Use highest compression ratio for a given format (also implies higher archiving time)]" \
 	  "1:archive format:($archs)" \
 	  "*:input files:_files" \
 	&& return 0

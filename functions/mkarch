@@ -16,6 +16,8 @@ Usage: mkarch <options> [format] [files...]
 			Print size without outputting archive.
 		(-t | --time):
 			Print archiving time.
+		(-b | --best):
+			Use highest compression ratio for a given format (also implies higher archiving time).
 		(-h | --help):
 			Print this help. Equal to running mkarch without arguments.
 
@@ -51,12 +53,17 @@ Usage: mkarch <options> [format] [files...]
 				shift;
 				continue
 			;;
+			-b|--best)
+				HIGH_RATIO=1;
+				shift;
+				continue
+			;;
 			-h|--help)
 				print -u2 "$usage"
 				return 0
 			;;
 			-?*)
-				printf -u2 "Unknown option %s\n" "$1"
+				printf "Unknown option %s\n" "$1"
 				return 1
 			;;
 			*)
@@ -166,6 +173,7 @@ function mkarch ()
 
 	local PRINT_SIZE
 	local PRINT_TIME
+	local HIGH_RATIO
 	local NAME
 	local EXTENSION
 	local ARCHIVE_NAME
@@ -228,8 +236,14 @@ function mkarch ()
 			local mkarch-mk_tar_gz ()
 			{
 				local COMPRESS_COMMAND='gzip'
+				if [[ -n $HIGH_RATIO ]]; then
+					COMPRESS_COMMAND='gzip --best'
+				fi
 				if command -v pigz > /dev/null; then
 					COMPRESS_COMMAND='pigz'
+					if [[ -n $HIGH_RATIO ]]; then
+						COMPRESS_COMMAND='pigz -11'
+					fi
 				fi
 
 				mkarch-mk_tar_archive
@@ -240,8 +254,14 @@ function mkarch ()
 			local mkarch-mk_tar_xz ()
 			{
 				local COMPRESS_COMMAND='xz -T0'
+				if [[ -n $HIGH_RATIO ]]; then
+					COMPRESS_COMMAND='xz -T0 -9e'
+				fi
 				if command -v pixz > /dev/null; then
 					COMPRESS_COMMAND='pixz'
+					if [[ -n $HIGH_RATIO ]]; then
+						COMPRESS_COMMAND='pixz -9e'
+					fi
 				fi
 
 				mkarch-mk_tar_archive
@@ -252,6 +272,9 @@ function mkarch ()
 			local mkarch-mk_tar_zst ()
 			{
 				local COMPRESS_COMMAND='zstd -T0'
+				if [[ -n $HIGH_RATIO ]]; then
+					COMPRESS_COMMAND='zstd -T0 --ultra -22'
+				fi
 
 				mkarch-mk_tar_archive
 			}
@@ -261,6 +284,9 @@ function mkarch ()
 			local mkarch-mk_tar_lz4 ()
 			{
 				local COMPRESS_COMMAND='lz4'
+				if [[ -n $HIGH_RATIO ]]; then
+					COMPRESS_COMMAND='lz4 --best'
+				fi
 
 				mkarch-mk_tar_archive
 			}
@@ -272,11 +298,15 @@ function mkarch ()
 				# workaround for not working 'tar -I "lrzip"...' (fail decompression)
 				local tar_name=$(basename --suffix=.lrz "$ARCHIVE_NAME")
 				tar -cv -f "$tar_name" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: tar.lrz"; return 1 }
+				local lrzip_args=('-D' '-q')
+				if [[ -n $HIGH_RATIO ]]; then
+					lrzip_args+='-z'
+				fi
 
 				if [[ -n $PRINT_SIZE ]]; then
-					lrzip -D -q $tar_name --outfile - 2>&1  | wc -c | numfmt --round=nearest --to=si --suffix=B --format="tar.lrz archive size: %.2f" || { print -u2 "ERROR: tar.lrz"; return 1 }
+					lrzip ${lrzip_args[@]} $tar_name --outfile - 2>&1  | wc -c | numfmt --round=nearest --to=si --suffix=B --format="tar.lrz archive size: %.2f" || { print -u2 "ERROR: tar.lrz"; return 1 }
 				else
-					lrzip -D -q $tar_name --outfile "$ARCHIVE_NAME" > /dev/null 2>&1 && print "Output tar.lrz archive to $ARCHIVE_NAME" || { print -u2 "ERROR: tar.lrz"; return 1 }
+					lrzip ${lrzip_args[@]} $tar_name --outfile "$ARCHIVE_NAME" > /dev/null 2>&1 && print "Output tar.lrz archive to $ARCHIVE_NAME" || { print -u2 "ERROR: tar.lrz"; return 1 }
 				fi
 			}
 			archs[tar.lrz]="mkarch-mk_tar_lrz"
@@ -285,6 +315,9 @@ function mkarch ()
 			local mkarch-mk_tar_lzo ()
 			{
 				local COMPRESS_COMMAND='lzop'
+				if [[ -n $HIGH_RATIO ]]; then
+					COMPRESS_COMMAND='lzop --best'
+				fi
 
 				mkarch-mk_tar_archive
 			}
@@ -294,13 +327,18 @@ function mkarch ()
 	if command -v 7z > /dev/null; then
 		local mkarch-mk_7z ()
 		{
+			local arr_7z_args=('a')
+			if [[ -n $HIGH_RATIO ]]; then
+				arr_7z_args+='-mx=9'
+			fi
+
 			if [[ -n $PRINT_SIZE ]]; then
 				local tmp_arch=$(mktemp -t "dummy_XXX.z7") && rm "$tmp_arch" || return 1
-				7z a "$tmp_arch" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: 7z"; return 1 }
+				7z ${arr_7z_args[@]} "$tmp_arch" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: 7z"; return 1 }
 				wc -c "$tmp_arch" | cut -d' ' -f1 | numfmt --round=nearest --to=si --suffix=B --format="7z archive size: %.2f"
 				rm "$tmp_arch"
 			else
-				7z a "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output 7z archive to $ARCHIVE_NAME" || { print -u2 "ERROR: 7z"; return 1 }
+				7z ${arr_7z_args[@]} "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output 7z archive to $ARCHIVE_NAME" || { print -u2 "ERROR: 7z"; return 1 }
 			fi
 		}
 		archs[7z]="mkarch-mk_7z"
@@ -308,13 +346,18 @@ function mkarch ()
 	if command -v rar > /dev/null; then
 		local mkarch-mk_rar ()
 		{
+			local rar_args=('a')
+			if [[ -n $HIGH_RATIO ]]; then
+				rar_args+='-m5'
+			fi
+
 			if [[ -n $PRINT_SIZE ]]; then
 				local tmp_arch=$(mktemp -t "dummy_XXX.rar") && rm "$tmp_arch" || return 1
-				rar a "$tmp_arch" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: rar"; return 1 }
+				rar ${rar_args[@]} "$tmp_arch" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: rar"; return 1 }
 				wc -c "$tmp_arch" | cut -d' ' -f1 | numfmt --round=nearest --to=si --suffix=B --format="rar archive size: %.2f"
 				rm "$tmp_arch"
 			else
-				rar a "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output rar archive to $ARCHIVE_NAME" || { print -u2 "ERROR: rar"; return 1 }
+				rar ${rar_args[@]} "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output rar archive to $ARCHIVE_NAME" || { print -u2 "ERROR: rar"; return 1 }
 			fi
 		}
 		archs[rar]="mkarch-mk_rar"
@@ -322,10 +365,15 @@ function mkarch ()
 	if command -v zip > /dev/null; then
 		local mkarch-mk_zip ()
 		{
+			local zip_args=('-rq')
+			if [[ -n $HIGH_RATIO ]]; then
+				zip_args+='-9'
+			fi
+
 			if [[ -n $PRINT_SIZE ]]; then
-				zip -rq - "${files[@]}" | wc -c | numfmt --round=nearest --to=si --suffix=B --format="zip archive size: %.2f" || { print -u2 "ERROR: zip"; return 1 }
+				zip ${zip_args[@]} - "${files[@]}" | wc -c | numfmt --round=nearest --to=si --suffix=B --format="zip archive size: %.2f" || { print -u2 "ERROR: zip"; return 1 }
 			else
-				zip -rq "$ARCHIVE_NAME" "${files[@]}" && print "Output zip archive to $ARCHIVE_NAME" || { print -u2 "ERROR: zip"; return 1 }
+				zip ${zip_args[@]} "$ARCHIVE_NAME" "${files[@]}" && print "Output zip archive to $ARCHIVE_NAME" || { print -u2 "ERROR: zip"; return 1 }
 			fi
 		}
 		archs[zip]="mkarch-mk_zip"
