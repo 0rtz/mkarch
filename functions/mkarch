@@ -217,7 +217,9 @@ function mkarch ()
 			fi
 		}
 		archs[tar]="mkarch-mk_tar_plain_archive"
-		if command -v bzip2 pbzip2 lbzip2 > /dev/null; then
+		if command -v bzip2 > /dev/null || \
+			command -v pbzip2 > /dev/null || \
+			command -v lbzip2 > /dev/null; then
 			local mkarch-mk_tar_bz2 ()
 			{
 				local COMPRESS_COMMAND='bzip2'
@@ -232,7 +234,8 @@ function mkarch ()
 			}
 			archs[tar.bz2]="mkarch-mk_tar_bz2"
 		fi
-		if command -v gzip pigz > /dev/null; then
+		if command -v gzip > /dev/null || \
+			command -v pigz > /dev/null; then
 			local mkarch-mk_tar_gz ()
 			{
 				local COMPRESS_COMMAND='gzip'
@@ -250,7 +253,8 @@ function mkarch ()
 			}
 			archs[tar.gz]="mkarch-mk_tar_gz"
 		fi
-		if command -v xz pixz > /dev/null; then
+		if command -v xz > /dev/null || \
+			command pixz > /dev/null; then
 			local mkarch-mk_tar_xz ()
 			{
 				local COMPRESS_COMMAND='xz -T0'
