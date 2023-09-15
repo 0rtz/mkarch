@@ -37,7 +37,7 @@ zinit light 0xRZ/mkarch
 ### Without plugin manager
 
 ```zsh
-source ./mkarch.plugin.zsh
+source /path/to/mkarch.plugin.zsh
 ```
 
 ## Supported compression formats
