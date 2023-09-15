@@ -1,5 +1,10 @@
 # vim: ft=zsh
 
+# INFO: To add new archive extension: expz
+# 1) Add archs[expz]="mkarch-mk_expz" map element
+# 2) Define function 'mkarch-mk_expz' to archive $files[@] in $ARCHIVE_NAME
+# 3) Add discovery of expz in _mkarch completion
+
 function _run_mkarch ()
 {
 	####################### Generate usage info
@@ -204,10 +209,13 @@ function mkarch ()
 			fi
 		}
 		archs[tar]="mkarch-mk_tar_plain_archive"
-		if command -v bzip2 lbzip2 > /dev/null; then
+		if command -v bzip2 pbzip2 lbzip2 > /dev/null; then
 			local mkarch-mk_tar_bz2 ()
 			{
 				local COMPRESS_COMMAND='bzip2'
+				if command -v pbzip2 > /dev/null; then
+					COMPRESS_COMMAND='pbzip2'
+				fi
 				if command -v lbzip2 > /dev/null; then
 					COMPRESS_COMMAND='lbzip2'
 				fi
