@@ -1,0 +1,373 @@
+	# DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+
+# Copyright (c) 2022 0xRZ. All rights reserved.
+
+# Licensed under the "THE BEER-WARE LICENSE" (Revision 42):
+# Everyone is permitted to copy and distribute verbatim or modified
+# copies of this license document, and changing it is allowed as long
+# as the name is changed.
+
+	# DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
+# TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
+	# 0. You just DO WHAT THE FUCK YOU WANT TO.
+
+function _run_mkarch ()
+{
+	####################### OPTIONS #######################
+	emulate -L zsh
+	setopt extended_glob warn_create_global typeset_silent \
+		no_short_loops rc_quotes no_auto_pushd \
+		pipe_fail
+	########################################################
+
+
+	###################### VARIABLES #######################
+	local -A archs=()
+	local -U files=()
+
+	local PRINT_SIZE
+	local PRINT_TIME
+	local COMPRESS_COMMAND
+	local NAME
+	local EXTENSION
+	local ARCHIVE_NAME
+	########################################################
+
+
+	###################### FUNCTIONS  #######################
+	# (explicit cleanup in function mkarch)
+	local mkarch-gen_archive_name ()
+	{
+		ARCHIVE_NAME="$NAME"
+		# if output file exists, generate a random name
+		if [[ -f "${ARCHIVE_NAME}.${EXTENSION}" ]]; then
+			ARCHIVE_NAME=$(mktemp "${ARCHIVE_NAME}_XXX") && rm "$ARCHIVE_NAME" || return 1
+		fi
+
+		ARCHIVE_NAME="${ARCHIVE_NAME}.${EXTENSION}"
+		if [[ -f "$ARCHIVE_NAME" ]]; then
+			print -u2 "File '$ARCHIVE_NAME' already exists. Aborting"
+			return 1
+		fi
+	}
+
+	local mkarch-mk_tar_archive ()
+	{
+		if [[ -n $PRINT_SIZE ]]; then
+			tar -I "$COMPRESS_COMMAND" -cv --to-stdout "${files[@]}" 2>/dev/null | wc -c | numfmt --round=nearest --to=si --suffix=B --format="$EXTENSION archive size: %.2f" || { print -u2 "ERROR: $EXTENSION"; return 1 }
+		else
+			tar -I "$COMPRESS_COMMAND" -cv -f "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output $EXTENSION archive to $ARCHIVE_NAME" || { print -u2 "ERROR: $EXTENSION"; return 1 }
+		fi
+	}
+
+	local mkarch-mk_tar_bz2 ()
+	{
+		COMPRESS_COMMAND='bzip2'
+		if command -v lbzip2 > /dev/null; then
+			COMPRESS_COMMAND='lbzip2'
+		fi
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_tar_gz ()
+	{
+		COMPRESS_COMMAND='gzip'
+		if command -v pigz > /dev/null; then
+			COMPRESS_COMMAND='pigz'
+		fi
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_tar_xz ()
+	{
+		COMPRESS_COMMAND='xz -T0'
+		if command -v pixz > /dev/null; then
+			COMPRESS_COMMAND='pixz'
+		fi
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_tar_zst ()
+	{
+		COMPRESS_COMMAND='zstd -T0'
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_tar_lz4 ()
+	{
+		COMPRESS_COMMAND='lz4'
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_tar_lrz ()
+	{
+		COMPRESS_COMMAND='lrzip'
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_tar_lzo ()
+	{
+		COMPRESS_COMMAND='lzop'
+
+		mkarch-mk_tar_archive
+	}
+
+	local mkarch-mk_7z ()
+	{
+		if [[ -n $PRINT_SIZE ]]; then
+			local tmp_arch=$(mktemp -t "dummy_XXX.z7") && rm "$tmp_arch" || return 1
+			7z a "$tmp_arch" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: 7z"; return 1 }
+			wc -c "$tmp_arch" | cut -d' ' -f1 | numfmt --round=nearest --to=si --suffix=B --format="7z archive size: %.2f"
+			rm "$tmp_arch"
+		else
+			7z a "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output 7z archive to $ARCHIVE_NAME" || { print -u2 "ERROR: 7z"; return 1 }
+		fi
+	}
+
+	local mkarch-mk_rar ()
+	{
+		if [[ -n $PRINT_SIZE ]]; then
+			local tmp_arch=$(mktemp -t "dummy_XXX.rar") && rm "$tmp_arch" || return 1
+			rar a "$tmp_arch" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: rar"; return 1 }
+			wc -c "$tmp_arch" | cut -d' ' -f1 | numfmt --round=nearest --to=si --suffix=B --format="rar archive size: %.2f"
+			rm "$tmp_arch"
+		else
+			rar a "$ARCHIVE_NAME" "${files[@]}" > /dev/null 2>&1 && print "Output rar archive to $ARCHIVE_NAME" || { print -u2 "ERROR: rar"; return 1 }
+		fi
+	}
+
+	local mkarch-mk_zip ()
+	{
+		if [[ -n $PRINT_SIZE ]]; then
+			zip -rq - "${files[@]}" | wc -c | numfmt --round=nearest --to=si --suffix=B --format="zip archive size: %.2f" || { print -u2 "ERROR: zip"; return 1 }
+		else
+			zip -rq "$ARCHIVE_NAME" "${files[@]}" && print "Output zip archive to $ARCHIVE_NAME" || { print -u2 "ERROR: zip"; return 1 }
+		fi
+	}
+	########################################################
+
+
+	####################### Generate map of available compression formats
+	if command -v tar > /dev/null; then
+		if command -v bzip2 lbzip2 > /dev/null; then
+			archs[tar.bz2]="mkarch-mk_tar_bz2"
+		fi
+		if command -v gzip pigz > /dev/null; then
+			archs[tar.gz]="mkarch-mk_tar_gz"
+		fi
+		if command -v xz pixz > /dev/null; then
+			archs[tar.xz]="mkarch-mk_tar_xz"
+		fi
+		if command -v zstd > /dev/null; then
+			archs[tar.zst]="mkarch-mk_tar_zst"
+		fi
+		if command -v lz4 > /dev/null; then
+			archs[tar.lz4]="mkarch-mk_tar_lz4"
+		fi
+		if command -v lrzip > /dev/null; then
+			archs[tar.lrz]="mkarch-mk_tar_lrz"
+		fi
+		if command -v lzop > /dev/null; then
+			archs[tar.lzo]="mkarch-mk_tar_lzo"
+		fi
+	fi
+	if command -v 7z > /dev/null; then
+		archs[7z]="mkarch-mk_7z"
+	fi
+	if command -v rar > /dev/null; then
+		archs[rar]="mkarch-mk_rar"
+	fi
+	if command -v zip > /dev/null; then
+		archs[zip]="mkarch-mk_zip"
+	fi
+	#######################
+
+	####################### Generate usage info
+	local usage="Archive files and directories using a given compression format.
+Usage: mkarch <options> [format] [files...]
+
+	<options>:
+		(-s | --size):
+			Print size without outputting archive.
+		(-t | --time):
+			Print archiving time.
+		(-h | --help):
+			Print this help. Equal to running mkarch without arguments.
+
+	[format]:
+		("
+	local archs_ext
+	for archs_ext in ${(k)archs}; do
+		usage="${usage} ${archs_ext} |"
+	done
+	if [[ ${#archs[@]} -eq 0 ]]; then
+		print -u2 "ERROR: no available compression tools found"
+		return 1
+	else
+		usage="${usage} ALL )"
+	fi
+	usage="${usage}
+
+
+Example 1.
+Archive 'build' directory and 'README.md' file using tar.gz compression:
+	mkarch tar.gz build README.md
+
+Example 2.
+Only print size of archive:
+	mkarch -s tar.gz build README.md
+
+Example 3.
+Print size and time of archiving 'prj' for each available compression format
+	mkarch -s -t ALL prj"
+	#######################
+
+	####################### Parse mkarch arguments
+	if [[ $# -eq 0 ]]; then
+		print -u2 "$usage"
+		return 1
+	fi
+
+	while true; do
+		case $1 in
+			-s|--size)
+				PRINT_SIZE=1;
+				shift;
+				continue
+			;;
+			-t|--time)
+				PRINT_TIME=1;
+				shift;
+				continue
+			;;
+			-h|--help)
+				print -u2 "$usage"
+				return 0
+			;;
+			-?*)
+				printf -u2 "Unknown option %s\n" "$1"
+				return 1
+			;;
+			*)
+				# no more arguments to parse
+				break
+			;;
+		esac
+	done
+
+	EXTENSION="$1"
+	shift
+
+	if ! (( ${+archs[$EXTENSION]} )) && [[ $EXTENSION != "ALL" ]]; then
+		print -b -u2 "ERROR: $EXTENSION archive type is not available\n"
+		print -b -u2 "Available archive types:\n${(k)archs}"
+		return 1
+	fi
+
+	if [[ $# -eq 0 ]]; then
+		print -u2 "ERROR: no [files...] specified"
+		return 1
+	fi
+
+	local file
+	for file in $@; do
+		if [[ ! -e "$file" ]]; then
+			print -u2 "$file not found"
+			return 1
+		fi
+		files+=$file
+	done
+	#######################
+
+	####################### Generate initial archive name (w/o EXTENSION)
+	if [[ ${#files[@]} -gt 1 ]]; then
+		# name archive as parent dir of last file if more than one file to archive specified
+		# https://zsh.sourceforge.io/Doc/Release/Expansion.html#Modifiers
+		NAME="${file:a:h:t}"
+	elif [[ -f "$file" ]]; then
+		NAME="${file:r:t}"
+	elif [[ -d "$file" ]]; then
+		NAME="${file:t}"
+	fi
+	#######################
+
+	####################### Archive
+	if [[ $EXTENSION = "ALL" ]]; then
+
+		local archs_func
+		for archs_ext archs_func in ${(kv)archs}; do
+			EXTENSION="$archs_ext"
+			mkarch-gen_archive_name || return 1
+
+			if [[ -n $PRINT_TIME ]]; then
+				local start_time=`date +%s`
+			fi
+
+			eval "$archs_func"
+
+			if [[ -n $PRINT_TIME ]]; then
+				local end_time=`date +%s`
+				local runtime=$((end_time-start_time))
+				if ! ((runtime/60)); then
+					print -b "$EXTENSION archiving time: "$runtime"s\n"
+				else
+					print -b "$EXTENSION archiving time: "$runtime"min\n"
+				fi
+			fi
+		done
+
+	else
+
+		mkarch-gen_archive_name || return 1
+
+		if [[ -n $PRINT_TIME ]]; then
+			local start_time=`date +%s`
+		fi
+
+		eval "$archs[$EXTENSION] || return 1"
+
+		if [[ -n $PRINT_TIME ]]; then
+			local end_time=`date +%s`
+			local runtime=$((end_time-start_time))
+			if ! ((runtime/60)); then
+				print "$EXTENSION archiving time: "$runtime"s"
+			else
+				print "$EXTENSION archiving time: "$runtime"min"
+			fi
+		fi
+
+	fi
+	#######################
+}
+
+function mkarch ()
+{
+	local ret
+	_run_mkarch $@ || ret=$?
+
+	# cleanup _run_mkarch local functions
+	unfunction "mkarch-gen_archive_name"
+	unfunction "mkarch-mk_tar_archive"
+	unfunction "mkarch-mk_tar_bz2"
+	unfunction "mkarch-mk_tar_gz"
+	unfunction "mkarch-mk_tar_xz"
+	unfunction "mkarch-mk_tar_zst"
+	unfunction "mkarch-mk_tar_lz4"
+	unfunction "mkarch-mk_tar_lrz"
+	unfunction "mkarch-mk_tar_lzo"
+	unfunction "mkarch-mk_7z"
+	unfunction "mkarch-mk_rar"
+	unfunction "mkarch-mk_zip"
+
+	return $ret
+}
+
+mkarch $@
+
+# vim: ft=zsh

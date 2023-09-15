@@ -1,0 +1,46 @@
+#compdef mkarch
+
+_mkarch ()
+{
+	local -U archs
+	if command -v tar > /dev/null; then
+		if command -v bzip2 lbzip2 > /dev/null; then
+			archs+=("tar.bz2")
+		fi
+		if command -v gzip pigz > /dev/null; then
+			archs+=("tar.gz")
+		fi
+		if command -v xz pixz > /dev/null; then
+			archs+=("tar.xz")
+		fi
+		if command -v zstd > /dev/null; then
+			archs+=("tar.zst")
+		fi
+		if command -v lz4 > /dev/null; then
+			archs+=("tar.lz4")
+		fi
+		if command -v lrzip > /dev/null; then
+			archs+=("tar.lrz")
+		fi
+		if command -v lzop > /dev/null; then
+			archs+=("tar.lzo")
+		fi
+	fi
+	if command -v 7z > /dev/null; then
+		archs+=("7z")
+	fi
+	if command -v rar > /dev/null; then
+		archs+=("rar")
+	fi
+	if command -v zip > /dev/null; then
+		archs+=("zip")
+	fi
+	archs+=("ALL")
+
+	_arguments -A "-*" \
+	  "(-s --size)"{-s,--size}"[Print size without outputting archive]" \
+	  "(-t --time)"{-t,--time}"[Print archiving time]" \
+	  "1:archive format:($archs)" \
+	  "*:input files:_files" \
+	&& return 0
+}
