@@ -115,9 +115,15 @@ function _run_mkarch ()
 
 	local mkarch-mk_tar_lrz ()
 	{
-		COMPRESS_COMMAND='lrzip'
+		# workaround for not working 'tar -I "lrzip"...' (fail decompression)
+		local tar_name=$(basename --suffix=.lrz "$ARCHIVE_NAME")
+		tar -cv -f "$tar_name" "${files[@]}" > /dev/null 2>&1 || { print -u2 "ERROR: $EXTENSION"; return 1 }
 
-		mkarch-mk_tar_archive
+		if [[ -n $PRINT_SIZE ]]; then
+			lrzip -D -q $tar_name --outfile - 2>&1  | wc -c | numfmt --round=nearest --to=si --suffix=B --format="$EXTENSION archive size: %.2f" || { print -u2 "ERROR: $EXTENSION"; return 1 }
+		else
+			lrzip -D -q $tar_name --outfile "$ARCHIVE_NAME" > /dev/null 2>&1 && print "Output $EXTENSION archive to $ARCHIVE_NAME" || { print -u2 "ERROR: $EXTENSION"; return 1 }
+		fi
 	}
 
 	local mkarch-mk_tar_lzo ()
