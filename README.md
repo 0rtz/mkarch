@@ -57,4 +57,4 @@ source /path/to/mkarch.plugin.zsh
 | zip                | [zip](http://www.info-zip.org/Zip.html)                                                                                                                        |
 | ALL                | Special extension to create archive using each available compression format                                                                                    |
 
-Available compression formats determined automatically based on existing system binaries. Plugin also supports tab completion for selection of available compression.
+Available compression formats determined automatically based on existing system binaries. Plugin also supports tab completion for selection of compression format.
